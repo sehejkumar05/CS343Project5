@@ -55,7 +55,22 @@ class PerceptronClassifier:
             print("Starting iteration ", iteration, "...")
             for i in range(len(trainingData)):
                 "*** YOUR CODE HERE ***"
-                util.raiseNotDefined()
+                #get the current features and true label
+                currFeatures = trainingData[i]
+                trueLabel = trainingLabels[i]
+                #calcualte scores for all possible labels using dot product
+                currScores = util.Counter()
+                for currLabel in self.legalLabels:
+                    currScores[currLabel] = self.weights[currLabel] * currFeatures
+                #make a prediction 
+                currPrediction = currScores.argMax()
+                #check prediction with true label
+                #update weights only if we got it wrong
+                if currPrediction != trueLabel:
+                    #increase weights of correct label
+                    self.weights[trueLabel] += currFeatures
+                    #decrease for incorrect label
+                    self.weights[currPrediction] -= currFeatures
 
     def classify(self, data ):
         """
@@ -77,9 +92,10 @@ class PerceptronClassifier:
         """
         Returns a list of the 100 features with the greatest weight for some label
         """
-        featuresWeights = []
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #use sorted list of keys from counter based on values
+        featuresWeights = sorted(self.weights[label], key=self.weights[label].get, reverse=True)[:100]
+
 
         return featuresWeights

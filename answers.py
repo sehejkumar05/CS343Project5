@@ -13,4 +13,7 @@
 
 
 def q2():
-    "*** YOUR CODE HERE ***"
+    return 'a'
+    '''
+    We would say that option a is most representative of a perception since a perceptron is a discriminative classifier so it only learns features that can seperate/distinguish one class from another class. So essentially we want "noisy" pixels that act as boundaries between digits that look the same or have similar shape. Row b looks like something that naive bayes would produce or some other generative model.
+    '''

@@ -77,8 +77,39 @@ def enhancedFeatureExtractorDigit(datum):
     """
     features =  basicFeatureExtractorDigit(datum)
 
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    #get/identify all the white pixels
+    #so just iterate looking for 0
+    whitePixels = []
+    for i in range(DIGIT_DATUM_WIDTH):
+        for j in range(DIGIT_DATUM_HEIGHT):
+            if datum.getPixel(i,j) == 0:
+                whitePixels.append((i,j))
+    #use bfs to count connected components of the white pixels
+    visited = set()
+    numWhiteRegions = 0
+    for currPixel in whitePixels:
+        if currPixel not in visited:
+            #mark entire region as visited
+            numWhiteRegions +=1
+            queue = [currPixel]
+            visited.add(currPixel)
+            while queue:
+                currX, currY = queue.pop(0)
+                #check for neighbors in all 4 directions
+                for newX, newY in [(0,1), (0,-1), (1,0), (-1,0)]:
+                    nextPixel = (currX + newX, currY+newY)
+                    #check bounds
+                    #add to visited and queue if white pixel
+                    if (0 <= nextPixel[0] < DIGIT_DATUM_WIDTH and 0 <= nextPixel[1] < DIGIT_DATUM_HEIGHT and datum.getPixel(nextPixel[0], nextPixel[1]) == 0 and nextPixel not in visited):
+                        visited.add(nextPixel)
+                        queue.append(nextPixel)
+
+
+    #encode number of holes
+    numHoles = numWhiteRegions - 1
+    features['zero_holes'] = 1 if numHoles == 0 else 0
+    features['one_hole'] = 1 if numHoles == 1 else 0
+    features['two_holes'] = 1 if numHoles >= 2 else 0
 
     return features
 
