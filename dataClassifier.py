@@ -23,7 +23,9 @@ import mira
 import samples
 import sys
 import util
-from pacman import GameState
+from pacman import GameState, Directions
+from collections import deque
+NO_GHOST_DISTANCE = 99999
 
 TEST_SET_SIZE = 100
 DIGIT_DATUM_WIDTH=28
@@ -155,9 +157,113 @@ def enhancedPacmanFeatures(state, action):
     """
     features = util.Counter()
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    # get successor states and other relevant information (position, food, capsules, ghosts, walls)
+    successor = state.generateSuccessor(0, action)
+    oldPosition = state.getPacmanPosition()
+    newPosition = successor.getPacmanPosition()
+    oldFood = state.getFood().asList()
+    newFood = successor.getFood().asList()
+    oldCapsules = state.getCapsules()
+    newCapsules = successor.getCapsules()
+    oldGhostStates = state.getGhostStates()
+    newGhostStates = successor.getGhostStates()
+    walls = successor.getWalls()
+    area = float(walls.width * walls.height)
+    # compute features
+    features["bias"] = 1.0
+    if action == Directions.STOP:
+        features["stop"] = 1.0
+    # check food and capsules eaten
+    if len(oldFood) > len(newFood):
+        features["eatFood"] = 1.0
+    if len(oldCapsules) > len(newCapsules):
+        features["eatCapsule"] = 1.0
+    # check for distance from closest food
+    if newFood:
+        newFoodDistance = min([mazeDistance(newPosition, food, walls) for food in newFood])
+        features["closestFood"] = float(newFoodDistance) / area
+    else:
+        newFoodDistance = 0
+        features["closestFood"] = 0.0
+    if oldFood:
+        oldFoodDistance = min([mazeDistance(oldPosition, food, walls) for food in oldFood])
+        if newFoodDistance < oldFoodDistance:
+            features["closerToFood"] = 1.0
+    # check for distance from ghosts and scared ghosts
+    oldActive = []
+    newActive = []
+    oldScared = []
+    newScared = []
+    # iterate through ghosts to get lists of distances to active and scared ghosts for old/new states
+    for ghostState in oldGhostStates:
+        ghostPosition = ghostState.getPosition()
+        if ghostPosition is None:
+            continue
+        distance = mazeDistance(oldPosition, ghostPosition, walls)
+        if ghostState.scaredTimer > 0:
+            oldScared.append(distance)
+        else:
+            oldActive.append(distance)
+    for ghostState in newGhostStates:
+        ghostPosition = ghostState.getPosition()
+        if ghostPosition is None:
+            continue
+        distance = mazeDistance(newPosition, ghostPosition, walls)
+        if ghostState.scaredTimer > 0:
+            newScared.append(distance)
+        else:
+            newActive.append(distance)
+    if newActive:
+        features["closestActiveFood"] = float(min(newActive) / area)
+        if min(newActive) <= 1:
+            features["dangerousGhostStep1"] = 1.0
+        if min(newActive) <= 2:
+            features["dangerousGhostStep2"] = 1.0
+    else:
+        features["closestActiveGhost"] = 1.0
+    if oldActive and newActive:
+        if min(newActive) < min(oldActive):
+            features["closerToActiveGhost"] = 1.0
+        if min(newActive) > min(oldActive):
+            features["fartherFromActiveGhost"] = 1.0
+    if newScared:
+        features["closestScaredGhost"] = float(min(newScared) / area)
+        if min(newScared) <= 1:
+            features["canEatScaredGhost"] = 1.0
+    else:
+        features["closestScaredGhost"] = 1.0
+    # check for distance from scared ghosts and how close we get
+    if oldScared and newScared:
+        if min(newScared) < min(oldScared):
+            features["closerToScaredGhost"] = 1.0
+        if min(newScared) > min(oldScared):
+            features["fartherFromScaredGhost"] = 1.0
+    # capsule distance check
+    if newCapsules:
+        newCapsuleDistance = min([mazeDistance(newPosition, capsule, walls) for capsule in newCapsules])
+        features["closestCapsule"] = float(newCapsuleDistance) / area
+    else:
+        features["closestCapsule"] = 1.0
+    features.divideAll(10.0)        
     return features
 
+# Helper function to compute maze distance between two points
+def mazeDistance(start, goal, walls):
+    if start == goal:
+        return 0
+    # BFS to find shortest path from start to goal
+    queue = deque([(start, 0)])
+    visited = set({start})
+    while queue:
+        position, distance = queue.popleft()
+        for newX, newY in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            nextPosition = (position[0] + newX, position[1] + newY)
+            if nextPosition == goal:
+                return distance + 1
+            if not walls[nextPosition[0]][nextPosition[1]] and nextPosition not in visited:
+                visited.add(nextPosition)
+                queue.append((nextPosition, distance + 1))
+    return NO_GHOST_DISTANCE
 
 def contestFeatureExtractorDigit(datum):
     """
